@@ -1,6 +1,7 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.mcp"
+dockerfilePath = "python/Dockerfile.mcp"
+dockerContext = "."
 
 [deploy]
 restartPolicyType = "ON_FAILURE"
