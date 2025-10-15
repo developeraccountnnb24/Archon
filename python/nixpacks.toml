@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312"]
+
+[phases.build]
+cmds = ["echo 'Using Dockerfile build'"]
+
+[start]
+cmd = "python -m uvicorn src.server.main:app --host 0.0.0.0 --port $PORT --workers 1"
