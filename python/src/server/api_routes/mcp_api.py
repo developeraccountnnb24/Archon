@@ -211,8 +211,12 @@ async def get_mcp_config():
                 config["model_choice"] = "gpt-4o-mini"
 
             api_logger.info("MCP configuration (streamable-http mode)")
-            safe_set_attribute(span, "host", config["host"])
-            safe_set_attribute(span, "port", config["port"])
+            # Log attributes based on config type (url vs host/port)
+            if "url" in config:
+                safe_set_attribute(span, "url", config["url"])
+            else:
+                safe_set_attribute(span, "host", config.get("host"))
+                safe_set_attribute(span, "port", config.get("port"))
             safe_set_attribute(span, "transport", "streamable-http")
             safe_set_attribute(span, "model_choice", config.get("model_choice", "gpt-4o-mini"))
 
