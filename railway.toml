@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "python/Dockerfile.mcp"
+dockerfilePath = "python/Dockerfile.server"
 dockerContext = "."
 
 [deploy]
