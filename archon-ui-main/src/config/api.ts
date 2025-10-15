@@ -32,5 +32,5 @@ export function getApiBasePath(): string {
 }
 
 // Export commonly used values
-export const API_BASE_URL = '/api';  // Always use relative URL for API calls
+export const API_BASE_URL = getApiBasePath();  // Use dynamic base path based on VITE_API_URL
 export const API_FULL_URL = getApiUrl();

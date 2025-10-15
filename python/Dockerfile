@@ -59,6 +59,8 @@ RUN playwright install chromium
 COPY src/server/ src/server/
 COPY src/__init__.py src/
 COPY tests/ tests/
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Set environment variables
 ENV PYTHONPATH="/app:$PYTHONPATH"
@@ -75,4 +77,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD sh -c "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${ARCHON_SERVER_PORT}/health')\""
 
 # Run the Server service
-CMD sh -c "python -m uvicorn src.server.main:app --host 0.0.0.0 --port ${PORT:-8181} --workers 1"
+CMD ["/app/start.sh"]

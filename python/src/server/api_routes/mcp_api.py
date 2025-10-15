@@ -19,7 +19,65 @@ router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 
 
 def get_container_status() -> dict[str, Any]:
-    """Get simple MCP container status without Docker management."""
+    """Get MCP service status - supports both Docker and Railway environments."""
+    # Check if running on Railway
+    if os.getenv("RAILWAY_ENVIRONMENT"):
+        try:
+            # On Railway, check HTTP endpoint
+            import httpx
+
+            # Get MCP URL from environment or construct it
+            mcp_url = os.getenv("ARCHON_MCP_URL")
+            if not mcp_url:
+                # Fallback: try service discovery
+                try:
+                    from ..config.service_discovery import get_discovery
+                    mcp_url = get_discovery().get_service_url("mcp")
+                except Exception:
+                    # If service discovery fails, return unknown status
+                    return {
+                        "status": "unknown",
+                        "uptime": None,
+                        "logs": [],
+                        "container_status": "unknown",
+                        "message": "MCP URL not configured",
+                        "environment": "railway"
+                    }
+
+            mcp_endpoint = f"{mcp_url}/mcp"
+
+            # Try to connect to MCP server
+            with httpx.Client(timeout=5.0) as client:
+                response = client.get(mcp_endpoint)
+                # MCP server responds with 405 to GET, which means it's running
+                if response.status_code in (200, 405):
+                    return {
+                        "status": "running",
+                        "uptime": None,  # Not tracked on Railway
+                        "logs": [],
+                        "container_status": "running",
+                        "environment": "railway"
+                    }
+                else:
+                    return {
+                        "status": "error",
+                        "uptime": None,
+                        "logs": [],
+                        "container_status": "error",
+                        "error": f"Unexpected status code: {response.status_code}"
+                    }
+        except Exception as e:
+            api_logger.error(f"Failed to check Railway MCP status: {e}")
+            return {
+                "status": "error",
+                "uptime": None,
+                "logs": [],
+                "container_status": "error",
+                "error": str(e),
+                "environment": "railway"
+            }
+
+    # Original Docker logic for local development
     docker_client = None
     try:
         docker_client = docker.from_env()
@@ -107,12 +165,38 @@ async def get_mcp_config():
             # Get actual MCP port from environment or use default
             mcp_port = int(os.getenv("ARCHON_MCP_PORT", "8051"))
 
-            # Configuration for streamable-http mode with actual port
-            config = {
-                "host": os.getenv("ARCHON_HOST", "localhost"),
-                "port": mcp_port,
-                "transport": "streamable-http",
-            }
+            # Configuration for streamable-http mode
+            # On Railway, use full URL; on Docker/local, use host:port
+            if os.getenv("RAILWAY_ENVIRONMENT"):
+                # Get MCP URL from environment
+                mcp_url = os.getenv("ARCHON_MCP_URL")
+                if mcp_url:
+                    config = {
+                        "url": f"{mcp_url}/mcp",
+                        "transport": "streamable-http",
+                    }
+                else:
+                    # Fallback to service discovery
+                    try:
+                        from ..config.service_discovery import get_discovery
+                        mcp_url = get_discovery().get_service_url("mcp")
+                        config = {
+                            "url": f"{mcp_url}/mcp",
+                            "transport": "streamable-http",
+                        }
+                    except Exception:
+                        # Final fallback
+                        config = {
+                            "host": "localhost",
+                            "port": mcp_port,
+                            "transport": "streamable-http",
+                        }
+            else:
+                config = {
+                    "host": os.getenv("ARCHON_HOST", "localhost"),
+                    "port": mcp_port,
+                    "transport": "streamable-http",
+                }
 
             # Get only model choice from database (simplified)
             try:

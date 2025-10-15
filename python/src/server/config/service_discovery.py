@@ -17,6 +17,7 @@ class Environment(Enum):
 
     DOCKER_COMPOSE = "docker_compose"
     LOCAL = "local"
+    RAILWAY = "railway"
 
 
 class ServiceDiscovery:
@@ -74,6 +75,10 @@ class ServiceDiscovery:
     @staticmethod
     def _detect_environment() -> Environment:
         """Detect the current deployment environment"""
+        # Check for Railway environment
+        if os.getenv("RAILWAY_ENVIRONMENT"):
+            return Environment.RAILWAY
+
         # Check for Docker environment
         if os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER"):
             return Environment.DOCKER_COMPOSE
@@ -104,7 +109,18 @@ class ServiceDiscovery:
                 f"Unknown service: {service}. Valid services are: {list(self.DEFAULT_PORTS.keys())}"
             )
 
-        if self.environment == Environment.DOCKER_COMPOSE:
+        if self.environment == Environment.RAILWAY:
+            # Railway uses public HTTPS URLs
+            # Check for full URL override via environment variable
+            url_override = os.getenv(f"{service_name.upper().replace('-', '_')}_URL")
+            if url_override:
+                url = url_override
+            else:
+                # Fallback to host-based construction
+                host = os.getenv(f"{service_name.upper().replace('-', '_')}_HOST", "localhost")
+                url = f"https://{host}"
+
+        elif self.environment == Environment.DOCKER_COMPOSE:
             # Docker Compose uses service names directly
             # Check for override via environment variable
             host = os.getenv(f"{service_name.upper().replace('-', '_')}_HOST", service_name)
